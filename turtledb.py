@@ -2,6 +2,7 @@
 import os
 import sys
 import types
+import re
 
 PYTHON2 = (2 == sys.version_info.major)
 PYTHON3 = (3 == sys.version_info.major)
@@ -72,6 +73,11 @@ class TurtleDb:
         self.__connection = None
 
         self.__blnPrintSQL = False
+
+        self.__measRegex = None
+
+        # use this class when returning data sets
+        self._dataset = CursorDataset
 
     def close(self):
         if self.__connection is None:
@@ -195,14 +201,24 @@ class TurtleDb:
         # (('max_allowed_packet', '16777216'),)
         return rows[0][1]
 
+    def queryCursor(self, strSql):
+        return self._queryCursor(strSql)
 
-    def queryCursor( self, strSql ):
+    def _queryCursor( self, strSql ):
         # get a cursor
-        cursor = self.connection().cursor()
+        cn = self.connection()
+
+        # the ping should reconnect if the connection has
+        # timed out.
+        cn.ping()
+        cursor = cn.cursor()
 
         nResult = cursor.execute( strSql )
 
         return cursor
+
+    def deleteDut(self, strPartNumber, strSerialNumber):
+        return self._checkResult(self._execStoredProc("deleteDut", strPartNumber, strSerialNumber))
 
     def deleteAll(self):
         # delete from these tables...
@@ -247,29 +263,29 @@ class TurtleDb:
 
     # PART NUMBERS/PRODUCTS #
     def getPartNumbers( self, strProduct=None ):
-        return DataSet( self._execStoredProc( "getPartNumbers", strProduct ) )
+        return self._dataset( self._execStoredProc( "getPartNumbers", strProduct ) )
 
     def getProducts(self):
-        ds = DataSet( self._execStoredProc( "getProducts" ) )
+        ds = self._dataset( self._execStoredProc( "getProducts" ) )
         # this is only a single column, turn this into a list
         return ds.getCol(0)
 
     def getProductProperties(self, strProduct):
-        return DataSet(
+        return self._dataset(
             self._execStoredProc( "getProductProperties", strProduct ) )
     
     def getProductProperty(self, strProduct, strProperty):
-        return DataSet(
+        return self._dataset(
             self._execStoredProc(
                 "getProductProperty", strProduct, strProperty )
                 )
 
     def getPartProperties(self, strPartNumber):
-        return DataSet(
+        return self._dataset(
             self._execStoredProc( "getPartProperties", strPartNumber ) )
 
     def getPartProperty(self, strPartNumber, strProperty):
-        return DataSet(
+        return self._dataset(
             self._execStoredProc(
                 "getPartProperty", strPartNumber, strProperty )
                 )
@@ -324,7 +340,7 @@ class TurtleDb:
         return self._checkResult(cursor)
     
     def getDuts(self, strPartNumber=None):
-        return DataSet(self._execStoredProc("getDuts", strPartNumber))
+        return self._dataset(self._execStoredProc("getDuts", strPartNumber))
 
     def insertDutProperty(self, strPartNumber, strSerialNumber, strPropName, strPropVal):
         cursor = self._execStoredProc("insertDutProperty", \
@@ -334,7 +350,7 @@ class TurtleDb:
         return self._checkResult(cursor)
 
     def getDutProperties(self, strPartNumber, strSerialNumber):
-        return DataSet(self._execStoredProc("getDutProperties", \
+        return self._dataset(self._execStoredProc("getDutProperties", \
             strPartNumber, strSerialNumber))
 
     # STATIONS #
@@ -345,7 +361,7 @@ class TurtleDb:
         return self._checkResult(cursor)
     
     def getStations(self):
-        return DataSet( self._execStoredProc("getStations") )
+        return self._dataset( self._execStoredProc("getStations") )
 
     def insertStationProperty(self, strStation, strPropName, strPropVal):
         cursor = self._execStoredProc("insertStationProperty", \
@@ -355,7 +371,7 @@ class TurtleDb:
         return self._checkResult(cursor)
 
     def getStationProperties(self, strStation):
-        return DataSet(self._execStoredProc("getStationProperties", strStation))
+        return self._dataset(self._execStoredProc("getStationProperties", strStation))
 
     # TEST NODES #
     def insertTestNode(self, strName, strVersion):
@@ -365,7 +381,7 @@ class TurtleDb:
         return self._checkResult(cursor)
 
     def getTestNodes(self):
-        return DataSet(self._execStoredProc("getTestNodes"))
+        return self._dataset(self._execStoredProc("getTestNodes"))
 
     # MEASUREMENTS #
     def insertMeasurement(self, strName, strUnits):
@@ -380,13 +396,13 @@ class TurtleDb:
         return self._checkResult(cursor)
 
     def getMeasurements(self):
-        return DataSet( self._execStoredProc("getMeasurements") )
+        return self._dataset( self._execStoredProc("getMeasurements") )
 
     def getArrayData(self, nArrayId):
-        return DataSet(self._execStoredProc("getArrayData", nArrayId))
+        return self._dataset(self._execStoredProc("getArrayData", nArrayId))
 
     def getArrays(self, nHistoryId, strGroupName = None):
-        return DataSet( self._execStoredProc("getArrays", nHistoryId, strGroupName) )
+        return self._dataset( self._execStoredProc("getArrays", nHistoryId, strGroupName) )
 
     def getArrayGroup(self, nHistoryId, strGroupName):
         # get all of the arrays of this group
@@ -433,18 +449,28 @@ class TurtleDb:
         # Assign all of this to a new dataset.
         return ManualDataset(lstHeader, tuple(lstDataSet))
 
+    def _parseMeas(self, strInput):
 
+        # It's more efficient to compile the regex string
+        # and keep it around for a while.
+        # Do the lazy instantiation here, don't compile until required.
+        if self.__measRegex is None:
+            self.__measRegex = re.compile("^(.*)\((.*)\)$")
+
+        match = self.__measRegex.match(strInput)
+
+        if match is None:
+            raise Exception('FAILED TO PARSE MEASUREMENT/UNITS "%s"' % strInput)
+
+        return [ x.strip() for x in match.groups() ]
 
     # given a header in a list/tuple sequence, this method will 
     # parse into a (MeasurementName,MeasurementUnits) pair.
     def _parseHeader(self, header, strSeparator=' '):
         lstPairs = []
 
-        f = lambda x : [ y.strip(' ()') for y in x.split(strSeparator) if len(y) > 0 ]
-
-        lstPairs = [ f(x) for x in header ]
         for strElement in header:
-            pair = f(strElement)
+            pair = self._parseMeas(strElement)
 
             nLength = len(pair)
 
@@ -532,7 +558,7 @@ class TurtleDb:
         return self._checkResult(cursor)
 
     def getScalarMetrics(self, nHistoryId):
-        return DataSet(self._execStoredProc("getTestMetrics", nHistoryId))
+        return self._dataset(self._execStoredProc("getTestMetrics", nHistoryId))
 
     # TEST HISTORY #
     def insertTestHistory(self, strDutPartNumber, strDutSerialNumber, \
@@ -559,6 +585,7 @@ class TurtleDb:
         # expect a scalar result
         return self._checkResult(cursor)
 
+    
     ##
     # @brief insert using ids
     #
@@ -570,9 +597,11 @@ class TurtleDb:
         pass 
 
     def getDutHistory(self, strPartNumber, strSerialNumber):
-        return DataSet( self._execStoredProc("getDutHistory", \
+        return self._dataset( self._execStoredProc("getDutHistory", \
             strPartNumber, strSerialNumber) )
         
+    def getNewTestRecord(self):
+        return TestRecord(self)
 
 class TestRecord(object):
     def __init__(self, db, **args):
@@ -980,11 +1009,10 @@ class CursorDataset(BaseDataset):
 # alias the class
 DataSet = CursorDataset
 
-def addSampleData(deleteAll=True):
+def addSampleData():
     db = TurtleDb()
 
-    if deleteAll:
-        db.deleteAll()
+    db.deleteAll()
 
     TANK_ROBOT = "TANK-ROBOT"
     WALKING_ROBOT = "WALKING-ROBOT"
@@ -1056,7 +1084,6 @@ def addSampleData(deleteAll=True):
     nHistoryId = db.insertTestHistory( TR_PN, strTankSn, 
         lstTankAssemblySteps[1], lstTankAssemblyVer[1], 
         TANK_ASSY_STATION, TANK_ASSY_TECH )
-    
 
 def isString(arg):
     return isinstance(arg, str)
