@@ -1,0 +1,1 @@
+mysqldump turtle --flush-privileges --no-data --routines --user=root -p > turtle-schema.sql

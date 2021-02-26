@@ -3,7 +3,7 @@
 -- Host: localhost    Database: turtle
 -- ------------------------------------------------------
 -- Server version	5.7.29-0ubuntu0.18.04.1
-
+use turtle;
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
@@ -15,7 +15,6 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-use turtle;
 --
 -- Table structure for table `array_data`
 --
@@ -69,7 +68,22 @@ CREATE TABLE `array_meas` (
   CONSTRAINT `fk_array_group` FOREIGN KEY (`array_group`) REFERENCES `array_group_names` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `fk_array_history` FOREIGN KEY (`history`) REFERENCES `test_history` (`id`),
   CONSTRAINT `fk_array_meas` FOREIGN KEY (`meas`) REFERENCES `measurement` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=87 DEFAULT CHARSET=latin1 COMMENT='holds metadata but not the raw data for an array measured';
+) ENGINE=InnoDB AUTO_INCREMENT=76 DEFAULT CHARSET=latin1 COMMENT='holds metadata but not the raw data for an array measured';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `condition_strings`
+--
+
+DROP TABLE IF EXISTS `condition_strings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `condition_strings` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `value` varchar(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `string_UNIQUE` (`value`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -167,7 +181,7 @@ CREATE TABLE `measurement` (
   `units` varchar(20) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`,`units`)
-) ENGINE=InnoDB AUTO_INCREMENT=47 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -296,7 +310,7 @@ CREATE TABLE `scalar_float` (
   KEY `idx_scalar_float_hist` (`history`),
   KEY `fk_scalar_float_spec_idx` (`spec`),
   CONSTRAINT `fk_scalar_float_spec` FOREIGN KEY (`spec`) REFERENCES `specs` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=82 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=70 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -414,6 +428,26 @@ CREATE TABLE `station_properties` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `test_conditions`
+--
+
+DROP TABLE IF EXISTS `test_conditions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `test_conditions` (
+  `history` int(10) NOT NULL,
+  `name` int(10) unsigned NOT NULL,
+  `value` int(10) unsigned NOT NULL,
+  KEY `fk_test_conditions_history` (`history`),
+  KEY `fk_test_conditions_key` (`name`),
+  KEY `fk_test_conditions_value` (`value`),
+  CONSTRAINT `fk_test_conditions_history` FOREIGN KEY (`history`) REFERENCES `test_history` (`id`) ON UPDATE NO ACTION,
+  CONSTRAINT `fk_test_conditions_key` FOREIGN KEY (`name`) REFERENCES `condition_strings` (`id`) ON UPDATE NO ACTION,
+  CONSTRAINT `fk_test_conditions_value` FOREIGN KEY (`value`) REFERENCES `condition_strings` (`id`) ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `test_history`
 --
 
@@ -430,7 +464,7 @@ CREATE TABLE `test_history` (
   `stop_time` datetime DEFAULT NULL,
   `result` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=59 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=56 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -538,6 +572,20 @@ SET character_set_client = utf8;
  1 AS `USL`,
  1 AS `spec_version`,
  1 AS `timestamp`*/;
+SET character_set_client = @saved_cs_client;
+
+--
+-- Temporary table structure for view `vw_test_conditions`
+--
+
+DROP TABLE IF EXISTS `vw_test_conditions`;
+/*!50001 DROP VIEW IF EXISTS `vw_test_conditions`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8;
+/*!50001 CREATE VIEW `vw_test_conditions` AS SELECT 
+ 1 AS `history_id`,
+ 1 AS `key`,
+ 1 AS `value`*/;
 SET character_set_client = @saved_cs_client;
 
 --
@@ -665,6 +713,37 @@ SELECT id INTO nId FROM array_group_names WHERE name = strArrayGroupName;
 IF id IS NULL THEN
 	INSERT into array_group_names (name) VALUES (strArrayGroupName);
     SET nId = LAST_INSERT_ID();
+END IF;
+
+RETURN nId;
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP FUNCTION IF EXISTS `fn_getConditionStringId` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8 */ ;
+/*!50003 SET character_set_results = utf8 */ ;
+/*!50003 SET collation_connection  = utf8_general_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`dave`@`localhost` FUNCTION `fn_getConditionStringId`(
+	strCondition VARCHAR(100)
+) RETURNS int(10) unsigned
+BEGIN
+
+DECLARE nId INTEGER UNSIGNED DEFAULT NULL;
+
+SELECT id INTO nId FROM condition_strings WHERE value = strCondition;
+
+IF nId IS NULL THEN 
+	INSERT INTO condition_strings (value) VALUES (strCondition);
+    SELECT LAST_INSERT_ID() INTO nId;
 END IF;
 
 RETURN nId;
@@ -1063,6 +1142,39 @@ DELIMITER ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP FUNCTION IF EXISTS `fn_getTestCondition` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8 */ ;
+/*!50003 SET character_set_results = utf8 */ ;
+/*!50003 SET collation_connection  = utf8_general_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`dave`@`localhost` FUNCTION `fn_getTestCondition`(
+	nHistoryId INTEGER UNSIGNED, 
+    strConditionName VARCHAR(100)
+) RETURNS varchar(100) CHARSET latin1
+BEGIN
+DECLARE strValue VARCHAR(100) DEFAULT NULL;
+
+SELECT csv.value INTO strValue
+FROM test_conditions tc
+INNER JOIN condition_strings csk
+	ON (csk.id = tc.name)
+INNER JOIN condition_strings csv
+	ON (csv.id = tc.value)
+WHERE tc.history = nHistoryId
+AND csk.value = strConditionName;
+
+RETURN strValue;
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 /*!50003 DROP FUNCTION IF EXISTS `fn_getTestNodeId` */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -1096,6 +1208,45 @@ END IF;
 
 
 RETURN nTestNodeId;
+
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP FUNCTION IF EXISTS `fn_hasTestCondition` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8 */ ;
+/*!50003 SET character_set_results = utf8 */ ;
+/*!50003 SET collation_connection  = utf8_general_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`dave`@`localhost` FUNCTION `fn_hasTestCondition`(
+	nHistoryId INTEGER UNSIGNED, 
+    nConditionName INTEGER UNSIGNED, 
+    nConditionValue INTEGER UNSIGNED
+) RETURNS tinyint(4)
+BEGIN
+
+# If the user essentially enters NO condition, 
+# then by definition yes we match it.
+IF ISNULL(nConditionName) THEN 
+	RETURN TRUE;
+END IF;
+
+IF EXISTS(
+	SELECT * FROM test_conditions tc
+    WHERE tc.history = nHistoryId
+    AND tc.name = nConditionName
+    AND tc.value = nConditionValue) THEN 
+    RETURN TRUE;
+ELSE
+	RETURN FALSE;
+END IF;
 
 END ;;
 DELIMITER ;
@@ -1152,6 +1303,62 @@ ELSE
 	RETURN CONCAT('INVALID SPEC TYPE: ', nSpecType);
 END IF;
 
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP FUNCTION IF EXISTS `fn_renderTestConditions` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8 */ ;
+/*!50003 SET character_set_results = utf8 */ ;
+/*!50003 SET collation_connection  = utf8_general_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`dave`@`localhost` FUNCTION `fn_renderTestConditions`(
+	nHistoryId INTEGER UNSIGNED
+) RETURNS varchar(400) CHARSET latin1
+BEGIN
+DECLARE blnDone TINYINT DEFAULT FALSE;
+DECLARE strName VARCHAR(100);
+DECLARE strValue VARCHAR(100);
+DECLARE strReturn VARCHAR(400) DEFAULT NULL;
+
+DECLARE curRenderTestConditions CURSOR FOR
+SELECT 
+    csk.value
+    ,csv.value
+FROM 
+	test_conditions tc
+    INNER JOIN condition_strings csk ON (tc.name = csk.id)
+    INNER JOIN condition_strings csv ON (tc.value = csv.id)
+    WHERE tc.history = nHistoryId;
+    
+
+
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET blnDone = TRUE;
+OPEN curRenderTestConditions;
+
+tc_loop: LOOP
+	
+	FETCH curRenderTestConditions INTO strName, strValue;
+    
+	IF blnDone THEN 
+		LEAVE tc_loop;
+	END IF;
+    IF strReturn IS NULL THEN
+        SET strReturn = CONCAT(strName, '=', strValue);
+	ELSE
+		SET strReturn = CONCAT(strReturn, ',', strName, '=', strValue);
+    END IF;
+	
+END LOOP tc_loop;
+
+RETURN strReturn;
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -1419,6 +1626,47 @@ DELIMITER ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `fixHistoryDut` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8 */ ;
+/*!50003 SET character_set_results = utf8 */ ;
+/*!50003 SET collation_connection  = utf8_general_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`dave`@`localhost` PROCEDURE `fixHistoryDut`(
+	IN nHistoryId INTEGER UNSIGNED,
+	IN strPartNumber VARCHAR(50), 
+    IN strSerialNumber VARCHAR(50)
+)
+sp: BEGIN
+
+DECLARE nDutId INTEGER UNSIGNED DEFAULT fn_getDutId(strPartNumber, strSerialNumber);
+
+IF nDutId IS NULL THEN 
+	SELECT -1 AS 'result', CONCAT('DUT ', strPartNumber, '/', strSerialNumber, ' DOES NOT EXIST') AS 'message';
+    LEAVE sp;
+END IF;
+
+IF NOT EXISTS(SELECT * FROM test_history WHERE id = nHistoryId) THEN 
+	SELECT -1 AS 'result', CONCAT('INVALID HISTORY ID: ', nHistoryId) AS 'message';
+    LEAVE sp;
+END IF;
+
+UPDATE test_history
+SET dut = nDutId 
+WHERE id = nHistoryId;
+
+SELECT nDutId AS 'result', NULL AS 'message';
+
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 /*!50003 DROP PROCEDURE IF EXISTS `getArrayData` */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -1435,6 +1683,33 @@ CREATE DEFINER=`dave`@`localhost` PROCEDURE `getArrayData`(
 sp: BEGIN
 
 SELECT array, idx, val FROM array_data WHERE array = nArrayId;
+
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `getArrayGroupNames` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8 */ ;
+/*!50003 SET character_set_results = utf8 */ ;
+/*!50003 SET collation_connection  = utf8_general_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`dave`@`localhost` PROCEDURE `getArrayGroupNames`(
+	IN nHistoryId INTEGER UNSIGNED 
+)
+sp: BEGIN
+
+SELECT DISTINCT agn.name
+FROM array_meas am
+INNER JOIN test_history th ON (am.history = th.id)
+INNER JOIN array_group_names agn ON (am.array_group = agn.id)
+WHERE th.id = nHistoryId;
 
 END ;;
 DELIMITER ;
@@ -1526,6 +1801,51 @@ INNER JOIN test_node tn ON (tn.id = th.test_node)
 WHERE dut.id = nDutId
 ORDER BY th.start_time
 ;
+
+
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `getDutLabels` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8 */ ;
+/*!50003 SET character_set_results = utf8 */ ;
+/*!50003 SET collation_connection  = utf8_general_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`root`@`localhost` PROCEDURE `getDutLabels`(
+	IN strPartNumber VARCHAR(50)
+)
+sp: BEGIN
+
+IF strPartNumber IS NULL THEN 
+
+	SELECT 
+		CONCAT(dut.serial_number, ' ', pn.name) AS 'label'
+		,dut.create_ts
+		,dut.flags
+		,dut.id
+	FROM dut 
+	INNER JOIN part_number pn 
+	ON (pn.id = dut.part_number);
+ELSE
+	SELECT 
+		CONCAT(dut.serial_number, ' ', pn.name) AS 'label'
+		,dut.create_ts
+		,dut.flags
+		,dut.id
+	FROM dut 
+	INNER JOIN part_number pn 
+	ON (pn.id = dut.part_number)
+	WHERE pn.name = strPartNumber;
+
+END IF;
 
 
 END ;;
@@ -1627,6 +1947,99 @@ ELSE
 	WHERE pn.name = strPartNumber;
 
 END IF;
+
+
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `getFilteredHistory` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8 */ ;
+/*!50003 SET character_set_results = utf8 */ ;
+/*!50003 SET collation_connection  = utf8_general_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`dave`@`localhost` PROCEDURE `getFilteredHistory`(
+	IN strDutLabel VARCHAR(100), 
+    IN strTestName VARCHAR(50), 
+    IN strTestVersion VARCHAR(50), 
+	IN strTestCondition VARCHAR(200) 
+)
+sp: BEGIN
+
+DECLARE strDutSN VARCHAR(50);
+DECLARE strDutPN VARCHAR(50);
+DECLARE nConditionName INTEGER UNSIGNED DEFAULT NULL;
+DECLARE nConditionValue INTEGER UNSIGNED DEFAULT NULL;
+DECLARE nDutId INTEGER UNSIGNED DEFAULT NULL;
+DECLARE nPos INTEGER UNSIGNED DEFAULT INSTR(strDutLabel, ' ');
+
+# parse the value out here
+IF 0 = nPos THEN
+	LEAVE sp;
+END IF;
+
+SELECT LEFT(strDutLabel, nPos - 1) INTO strDutPN;
+SELECT RIGHT(strDutLabel, LENGTH(strDutLabel) - nPos) INTO strDutSN;
+
+# parse the test condition.
+CALL debug_log('getFilteredHistory', CONCAT('DUT PN: \'', strDutPN, '\' DUT SN: \'', strDutSN, '\''));
+
+IF NOT ISNULL(strTestCondition) THEN
+	SET nPos = INSTR(strTestCondition, '=');
+	SELECT cs.id INTO nConditionName
+    FROM condition_strings cs
+    WHERE cs.value = LEFT(strTestCondition, nPos - 1) ;
+    
+    IF nConditionName IS NULL THEN 
+		SELECT fn_getConditionStringId('INVALID') INTO nConditionName;
+    END IF;
+    
+	SELECT cs.id INTO nConditionValue
+    FROM condition_strings cs
+    WHERE cs.value = RIGHT(strTestCondition, LENGTH(strTestCondition) - nPos);
+    
+    CALL debug_log('getFilteredDutHistory', CONCAT('condition name: ', nConditionName, ' condition value: ', nConditionValue));
+ELSE
+	CALL debug_log('getFilteredDutHistory', 'TEST CONDITION NULL, SKIPPING');
+END IF;
+
+#SELECT strConditionName, strConditionValue;
+#SELECT strDutPN, strDutSN;
+SELECT fn_getDutId(strDutPN, strDutSN) INTO nDutId;
+
+IF nDutId IS NULL THEN 
+	LEAVE sp;
+END IF;
+
+SELECT 
+	th.id
+    ,pn.name as 'part_number'
+    ,dut.serial_number
+    ,sta.name AS 'test_station'
+    ,tn.name AS 'test_name'
+    ,tn.version AS 'test_version'
+    ,th.start_time
+    ,th.stop_time
+    ,th.result
+    
+FROM 
+	test_history th
+	INNER JOIN test_node tn
+	ON (th.test_node = tn.id)
+    INNER JOIN dut ON (th.dut = dut.id)
+    INNER JOIN part_number pn ON (pn.id = dut.part_number)
+    LEFT OUTER JOIN station sta ON (th.station = sta.id)
+WHERE th.dut = nDutId 
+AND TRUE = fn_hasTestCondition(th.id, nConditionName, nConditionValue)
+AND tn.name LIKE IFNULL(strTestName, '%')
+AND tn.version LIKE IFNULL(strTestVersion, '%');
 
 
 END ;;
@@ -1930,6 +2343,62 @@ sp: BEGIN
 
 SELECT name, flags FROM station;
 
+
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `getTestCondition` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8 */ ;
+/*!50003 SET character_set_results = utf8 */ ;
+/*!50003 SET collation_connection  = utf8_general_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`dave`@`localhost` PROCEDURE `getTestCondition`(
+	IN nHistoryId INTEGER UNSIGNED,
+    IN strConditionName VARCHAR(100)
+)
+sp: BEGIN
+
+SELECT fn_getTestCondition(nHistoryId, strConditionName) AS 'value';
+
+
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `getTestConditions` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8 */ ;
+/*!50003 SET character_set_results = utf8 */ ;
+/*!50003 SET collation_connection  = utf8_general_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`dave`@`localhost` PROCEDURE `getTestConditions`(
+	IN nHistoryId INTEGER UNSIGNED
+)
+sp: BEGIN
+
+SELECT
+    csk.value AS 'key'
+    ,csv.value AS 'value'
+FROM test_conditions tc
+INNER JOIN condition_strings csk
+	ON (csk.id = tc.name)
+INNER JOIN condition_strings csv
+	ON (csv.id = tc.value)
+WHERE tc.history = nHistoryId;
 
 END ;;
 DELIMITER ;
@@ -2786,6 +3255,57 @@ DELIMITER ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `insertTestCondition` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8 */ ;
+/*!50003 SET character_set_results = utf8 */ ;
+/*!50003 SET collation_connection  = utf8_general_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`dave`@`localhost` PROCEDURE `insertTestCondition`(
+	IN nHistoryId INTEGER UNSIGNED,
+	IN strKey VARCHAR(100),
+    IN strValue VARCHAR(100)
+)
+sp: BEGIN
+
+DECLARE nKeyId INTEGER UNSIGNED DEFAULT fn_getConditionStringId(strKey);
+DECLARE nValueId INTEGER UNSIGNED DEFAULT fn_getConditionStringId(strValue);
+
+IF NOT EXISTS( SELECT * FROM test_history WHERE id = nHistoryId ) THEN
+	SELECT -1 AS 'result', CONCAT(nHistoryId, ' ID NOT A VALID TEST ID') as 'message';
+    LEAVE sp;
+END IF;
+
+IF EXISTS(
+	SELECT * FROM test_conditions tc 
+    WHERE tc.history = nHistoryId 
+    AND tc.name = nKeyId ) THEN
+    
+    # Just update the value
+    UPDATE test_conditions tc
+    SET tc.value = nValueId
+    WHERE tc.history = nHistoryId
+    AND tc.name = nKeyId;
+    
+ELSE
+	# add a new value
+    INSERT INTO test_conditions
+		(history, name, value)
+	VALUES
+		(nHistoryId, nKeyId, nValueId);
+END IF;
+SELECT nHistoryId AS 'result', NULL AS 'message';
+
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 /*!50003 DROP PROCEDURE IF EXISTS `insertTestNode` */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -2935,6 +3455,24 @@ DELIMITER ;
 /*!50001 SET collation_connection      = @saved_col_connection */;
 
 --
+-- Final view structure for view `vw_test_conditions`
+--
+
+/*!50001 DROP VIEW IF EXISTS `vw_test_conditions`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8 */;
+/*!50001 SET character_set_results     = utf8 */;
+/*!50001 SET collation_connection      = utf8_general_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`dave`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `vw_test_conditions` AS select `tc`.`history` AS `history_id`,`csk`.`value` AS `key`,`csv`.`value` AS `value` from ((`test_conditions` `tc` join `condition_strings` `csk` on((`csk`.`id` = `tc`.`name`))) join `condition_strings` `csv` on((`csv`.`id` = `tc`.`value`))) */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+
+--
 -- Final view structure for view `vw_test_history`
 --
 
@@ -2961,4 +3499,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-03-04  6:04:00
+-- Dump completed on 2020-03-08 17:31:32

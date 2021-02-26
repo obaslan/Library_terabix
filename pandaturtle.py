@@ -31,6 +31,46 @@ class PandaTurtle(turtledb.TurtleDb):
     def getNewTestRecord(self):
         return PandaTestRecord(self)
 
+    def getRichFilteredHistory(self, strDutLabel, strTestName=None, strTestVersion=None, strTestCondition=None):
+        ds = self.getFilteredHistory(strDutLabel, strTestName, strTestVersion, strTestCondition)
+
+        lstRows = ds.toDictList()
+        # for each row, go through and do more querying to get all of the scalar metrics and arrays.
+
+        for dctRow in lstRows:
+            nHistoryId = dctRow['id']
+            # query scalars
+            lstScalarMetrics = self.getScalarMetrics(nHistoryId).toDictList()
+            dctRow['scalar_metrics'] = lstScalarMetrics
+
+
+            # now the arrays that do not belong in a data frame (single column data frames)
+            lstNoGroupArrays = []
+            lstArrayGroupNames = []
+            lstArrays = self.getArrays(nHistoryId).toDictList()
+            dctRow['arrays'] = {}
+            for dctArray in lstArrays:
+                if dctArray['group_name'] is None:
+                    # I need to grab the data for this array
+                    # getArrayData?
+                    nArrayId = dctArray['id']
+                    strArrayName = "%s (%s)" % (dctArray['name'], dctArray['units'])
+                    dctRow['arrays'][strArrayName] = self.getArrayData(nArrayId).getCol('val')
+                    dsArrayData = self.getArrayData(nArrayId)
+                else:
+                    if dctArray['group_name'] not in lstArrayGroupNames:
+                        lstArrayGroupNames.append(dctArray['group_name'])
+
+            # now the array groups
+            lstDataFrames = []
+            for strArrayGroupName in lstArrayGroupNames:
+                ds = self.getArrayGroup(nHistoryId, strArrayGroupName)
+                lstDataFrames.append({strArrayGroupName : ds.toDataFrame()})
+
+            dctRow["data_frames"] = lstDataFrames
+            
+        return lstRows
+
 class PandaCursorDataset(turtledb.CursorDataset):
     def __init__(self, cursor=None, header=None, data=None):
         
@@ -71,10 +111,7 @@ class PandaTestRecord(turtledb.TestRecord):
         self._db.insertDataFrame(self._nHistoryId, df, strGroupName)
 
 def test():
-    lstIndex = list(range(6))
-    lstPosition = [0.0, 1.1, 2.3, 2.9, 3.1, 3.4] 
-    lstTorque = [1.0, 2.3, 4.5, 4.2, 4.0, 3.9]
+    pt = PandaTurtle()
 
-    df = pandas.DataFrame( {'Index': lstIndex, 'position': lstPosition, 'torque': lstTorque})
-
-    return df
+    lstRows = pt.getRichFilteredHistory('TR2000-04 TR0012', 'ArmFrictionTest', '2.3.8', 'Temperature=25C')
+    return lstRows

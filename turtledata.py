@@ -181,14 +181,15 @@ class SampleData(object):
         if strTankRobotSN is None:
             strTankRobotSN = self.lstTRSn[-1]
 
-        testRecord = turtledb.TestRecord(self.db)
+        testRecord = self.db.getNewTestRecord()
         testRecord.dutPartNumber(self.TR_PN)
         testRecord.dutSerialNumber(strTankRobotSN)
         testRecord.testName(self.lstTankAssemblySteps[-1])
         testRecord.testVersion(self.lstTankAssemblyVer[-1])
         testRecord.operator(self.lstTankAssyTechs[0][0])
 
-        testRecord.create()
+        nHistoryId = testRecord.create()
+        testRecord.insertTestCondition('Temperature', '25C')
 
         nArrayLength = 75
         lstVelocity = frange(0.0, 0.5, 25) + [0.5] * 25 + frange(0.5, 0, 25)
@@ -223,11 +224,17 @@ class SampleData(object):
             testRecord.insertArray( "Velocity", "m/s", lstVelocity, strMeasGroup=strGroup)
             testRecord.insertArray( "Position", "m", lstPosition, strMeasGroup=strGroup)
         
+        # add another array that does NOT have a associated array group
+        # maybe positions at which we had envelope/following error warnings
+        lstWarningPos = [ 1.345, 57.9875, 100.34, 32.8976]
+        testRecord.insertArray("EnvelopeWarning", "m", lstWarningPos)
+
 
         # add some scalar measurements
         testRecord.insertScalar("AvgTorque", "Nm", sum(lstTorque)/float(nArrayLength))
         testRecord.insertScalar("MaxTorque", "Nm", max(lstTorque))
         testRecord.insertScalar("TotalDistance", "m", max(lstPosition) - min(lstPosition))
+
         testRecord.close(0)
 
 def vectorAdd(*args):

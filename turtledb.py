@@ -342,6 +342,9 @@ class TurtleDb:
     def getDuts(self, strPartNumber=None):
         return self._dataset(self._execStoredProc("getDuts", strPartNumber))
 
+    def getDutLabels(self, strPartNumber=None):
+        return self._dataset(self._execStoredProc("getDutLabels", strPartNumber))
+
     def insertDutProperty(self, strPartNumber, strSerialNumber, strPropName, strPropVal):
         cursor = self._execStoredProc("insertDutProperty", \
             strPartNumber, strSerialNumber, strPropName, strPropVal)
@@ -352,6 +355,16 @@ class TurtleDb:
     def getDutProperties(self, strPartNumber, strSerialNumber):
         return self._dataset(self._execStoredProc("getDutProperties", \
             strPartNumber, strSerialNumber))
+
+    ##
+    # This is intended to fix a history record that had the wrong dut recorded.
+    # Give it the history id w/ the bad dut and the correct part number/serial number
+    # and the test history record will be updated/corrected.
+    # returns the new dut id
+    def fixHistoryDut(self, nHistoryId, strPartNumber, strSerialNumber):
+        cursor = self._execStoredProc("fixHistoryDut", nHistoryId, strPartNumber, strSerialNumber)
+        # expect a scalar result
+        return self._checkResult(cursor)
 
     # STATIONS #
     def insertStation(self, strStationName):
@@ -383,6 +396,18 @@ class TurtleDb:
     def getTestNodes(self):
         return self._dataset(self._execStoredProc("getTestNodes"))
 
+    def insertTestCondition(self, nHistoryId, strName, strValue):
+        cursor = self._execStoredProc("insertTestCondition", nHistoryId, strName, strValue)
+
+        # expect a scalar result
+        return self._checkResult(cursor)
+
+    def getTestConditions(self, nHistoryId):
+        return self._dataset( self._execStoredProc("getTestConditions", nHistoryId) )
+
+    def getTestCondition(self, nHistoryId, strConditionName):
+        return self._dataset( self._execStoredProc("getTestCondition", nHistoryId, strConditionName) ).row(0)[0]
+
     # MEASUREMENTS #
     def insertMeasurement(self, strName, strUnits):
         # check the inputs
@@ -398,11 +423,18 @@ class TurtleDb:
     def getMeasurements(self):
         return self._dataset( self._execStoredProc("getMeasurements") )
 
+
     def getArrayData(self, nArrayId):
         return self._dataset(self._execStoredProc("getArrayData", nArrayId))
 
     def getArrays(self, nHistoryId, strGroupName = None):
         return self._dataset( self._execStoredProc("getArrays", nHistoryId, strGroupName) )
+
+    ##
+    # get a python list of all array group names
+    def getArrayGroupNames(self, nHistoryId):
+        ds = self._dataset(self._execStoredProc("getArrayGroupNames", nHistoryId))
+        return ds.getCol(0)
 
     def getArrayGroup(self, nHistoryId, strGroupName):
         # get all of the arrays of this group
@@ -419,9 +451,6 @@ class TurtleDb:
         for nArrayIdx in range(meas.rowCount()):
             lstHeader.append( "%s (%s)" % (meas.getVal(nArrayIdx, "name"), meas.getVal(nArrayIdx, "units")) )
 
-
-        print("HEADER:")
-        print(lstHeader)
         lstArrays = []
 
         for nArrayIdx in range(meas.rowCount()):
@@ -596,6 +625,15 @@ class TurtleDb:
          #cursor = self._execStoredProc( "insertHistory", \
         pass 
 
+    def getFilteredHistory(self, strDutLabel, strTestName=None, strTestVersion=None, strTestCondition=None):
+        return self._dataset(self._execStoredProc(\
+                "getFilteredHistory", \
+                strDutLabel, \
+                strTestName, \
+                strTestVersion, \
+                strTestCondition))
+
+
     def getDutHistory(self, strPartNumber, strSerialNumber):
         return self._dataset( self._execStoredProc("getDutHistory", \
             strPartNumber, strSerialNumber) )
@@ -696,6 +734,15 @@ class TestRecord(object):
             self._dtStop,   \
             self._nResult)
 
+        return self._nHistoryId
+
+    def historyId(self):
+        return self._nHistoryId
+
+    def insertTestCondition(self, strName, strValue):
+        self._checkCreated()
+        return self._db.insertTestCondition(self._nHistoryId, strName, strValue)
+    
     def insertScalar(self, strMeasName, strUnits, val, dtMeasTime=None):
         self._checkCreated()
 
@@ -809,6 +856,21 @@ class BaseDataset(object):
                 f.close()
 
 
+
+    def toDictList(self):
+        # this returns one python dictionary per row of data.
+        lstRows = []
+
+        for nRow in range(self.rowCount()):
+            dctRow = {}
+            row = self.row(nRow)
+
+            for nCol, val in enumerate(row):
+                dctRow[self._header[nCol]] = val
+
+            lstRows.append(dctRow)
+
+        return lstRows
 
     def toDict(self, blnPrettyHeaders=False):
         dctDataSet = {}
@@ -1119,5 +1181,7 @@ def getStringIO():
 def test():
     tdb = TurtleDb()
 
-    return tdb
+    ds = tdb.getFilteredHistory('TR2000-04 TR0012', 'ArmFrictionTest', '2.3.8', 'Temperature=25C')
+
+    return ds
 	
